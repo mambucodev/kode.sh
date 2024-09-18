@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 
-kode() {
+kode() (
     # Determine the config directory
-    local config_dir
+    config_dir
     if [[ -n "${XDG_CONFIG_HOME}" ]]; then
         config_dir="${XDG_CONFIG_HOME}/kodesh"
     else
         config_dir="${HOME}/.config/kodesh"
     fi
 
-    local config="${config_dir}/config.json"
-    local ide_prefs="${config_dir}/ide_preferences.json"
-    local log_dir="${config_dir}/logs"
+    config="${config_dir}/config.json"
+    ide_prefs="${config_dir}/ide_preferences.json"
+    log_dir="${config_dir}/logs"
 
     # Function to print help message
-    local print_help() {
+    print_help() {
         echo "Usage: kode [OPTIONS] [PROJECT] [IDE]"
         echo
         echo "Options:"
@@ -37,7 +37,7 @@ kode() {
     }
 
     # Function to set default projects directory
-    local set_default_dir() {
+    set_default_dir() {
         if [ -d "$1" ]; then
             jq --arg dir "$1" '.default_projects_dir = $dir' "$config" > "${config}.tmp" && mv "${config}.tmp" "$config"
             echo "Default projects directory set to $1"
@@ -47,9 +47,9 @@ kode() {
     }
 
     # Function to add a project manually
-    local add_project() {
+    add_project() {
         if [ -d "$1" ]; then
-            local project_name=$(basename "$1")
+            project_name=$(basename "$1")
             jq --arg name "$project_name" --arg path "$1" '.manual_projects[$name] = $path' "$config" > "${config}.tmp" && mv "${config}.tmp" "$config"
             echo "Project $project_name added with path $1"
         else
@@ -86,7 +86,7 @@ kode() {
             return 0
             ;;
         ls)
-            local default_dir=$(jq -r '.default_projects_dir // empty' "$config")
+            default_dir=$(jq -r '.default_projects_dir // empty' "$config")
             if [ -d "$default_dir" ]; then
                 echo "Projects in $default_dir:"
                 ls "$default_dir"
@@ -105,10 +105,9 @@ kode() {
     fi
 
     # Get project directory
-    local default_dir=$(jq -r '.default_projects_dir // empty' "$config")
-    local manual_project_path=$(jq -r --arg name "$1" '.manual_projects[$name] // empty' "$config")
+    default_dir=$(jq -r '.default_projects_dir // empty' "$config")
+    manual_project_path=$(jq -r --arg name "$1" '.manual_projects[$name] // empty' "$config")
 
-    local project_dir
     if [ -n "$manual_project_path" ]; then
         project_dir="$manual_project_path"
     elif [ -d "$default_dir/$1" ]; then
@@ -118,7 +117,6 @@ kode() {
         return 1
     fi
 
-    local ide
     if [ -z "$2" ]; then
         ide=$(jq -r --arg name "$1" '.[$name] // empty' "$ide_prefs")
         if [ -z "$ide" ]; then
@@ -130,11 +128,10 @@ kode() {
     fi
 
     # Get IDE paths from config
-    local zed_path=$(jq -r '.ide_paths.zed // "/usr/bin/zeditor"' "$config")
-    local vscode_path=$(jq -r '.ide_paths.vscode // "/usr/bin/code"' "$config")
-    local intellij_path=$(jq -r '.ide_paths.intellij // "/usr/bin/idea"' "$config")
+    zed_path=$(jq -r '.ide_paths.zed // "/usr/bin/zeditor"' "$config")
+    vscode_path=$(jq -r '.ide_paths.vscode // "/usr/bin/code"' "$config")
+    intellij_path=$(jq -r '.ide_paths.intellij // "/usr/bin/idea"' "$config")
 
-    local command
     case "$ide" in
         'z') command="$zed_path $project_dir" ;;
         'vs') command="$vscode_path $project_dir" ;;
@@ -148,28 +145,30 @@ kode() {
 
     mkdir -p "$log_dir"
 
-    local timestamp=$(date +"%Y%m%d_%H%M%S")
-    local log_file="$log_dir/${timestamp}.log"
+    timestamp=$(date +"%Y%m%d_%H%M%S")
+    log_file="$log_dir/${timestamp}.log"
     
-    local ide_name
     case "$ide" in
         'z') ide_name="Zed" ;;
         'vs') ide_name="VS Code" ;;
         'id') ide_name="IntelliJ IDEA" ;;
     esac
 
+    # Disabling shellcheck suggestion for printf command
+    # shellcheck disable=SC2059
     printf "\e[32mOpening \e[33m\e[1m$1\e[0m\e[32m with \e[33m\e[1m$ide_name\e[0m\e[32m"
-    for i in {1..3}; do
+    for _ in {1..3}; do
         sleep 0.2
         printf "."
     done
     printf "\e[0m\n"
     sleep 0.2
 
+    # shellcheck disable=SC2086
     nohup $command > "$log_file" 2>&1 &
 
-    cd "$project_dir"
-}
+    cd "$project_dir" || return 1
+)
 
 # Initialize config with default values if it's empty
 if [ ! -s "${XDG_CONFIG_HOME:-$HOME/.config}/kodesh/config.json" ]; then
