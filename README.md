@@ -1,3 +1,5 @@
+> This tool needs a rewrite. Once done, it's probably be published as a package too. But for now, this is just poorly-written code just for fun.
+
 # kode.sh
 
 `kode.sh` is a bash utility that simplifies opening projects with your preferred Integrated Development Environment (IDE). It allows you to quickly navigate to your project directories and launch them with your chosen IDE, all from the command line.
